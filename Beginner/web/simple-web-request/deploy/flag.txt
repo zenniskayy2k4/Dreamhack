@@ -1,0 +1,2 @@
+DH{c46b414ddba26adfa4606c59655bda0a18fbe260606b042b52d865e0160eea0e}
+curl -X POST -d "param=pooost&param2=requeeest&check=107855307199817730982358631771226694844" http://host8.dreamhack.games:11099/flag

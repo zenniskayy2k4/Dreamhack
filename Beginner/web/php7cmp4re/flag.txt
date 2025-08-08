@@ -1,0 +1,7 @@
+Hướng dẫn giải:
+1. Truy cập vào trang web của thử thách.
+2. Trong ô input1, nhập: 7.@
+3. Trong ô input2, nhập: 8a
+4. Nhấn nút "Submit" (제출).
+
+Flag: DH{81df5f707394347306c1ce2693601349407013aedbf79ae8d97a502c3d138bfe}
