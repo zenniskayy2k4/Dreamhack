@@ -1,0 +1,48 @@
+def affine_decrypt(ciphertext, a, b):
+    """Decrypt affine cipher with keys a, b"""
+    try:
+        a_inv = pow(a, -1, 251)  # Modular inverse of a
+        plaintext = b""
+        for c in ciphertext:
+            m = (a_inv * (c - b)) % 251
+            plaintext += bytes([m])
+        return plaintext
+    except:
+        return None
+
+def solve_affine_known_plaintext(ciphertext_hex, known_plain=b'cryptography'):
+    ciphertext = bytes.fromhex(ciphertext_hex)
+    
+    # Try to find known plaintext at different positions
+    for pos in range(len(ciphertext) - len(known_plain) + 1):
+        # Take 2 characters to solve system of equations
+        c1, c2 = ciphertext[pos], ciphertext[pos + 1]
+        p1, p2 = known_plain[0], known_plain[1]
+        
+        # Solve: c1 = a*p1 + b (mod 251)
+        #        c2 = a*p2 + b (mod 251)
+        # => a = (c1-c2) * (p1-p2)^(-1) (mod 251)
+        
+        try:
+            delta_c = (c1 - c2) % 251
+            delta_p = (p1 - p2) % 251
+            if delta_p == 0:
+                continue
+                
+            a = (delta_c * pow(delta_p, -1, 251)) % 251
+            b = (c1 - a * p1) % 251
+            
+            # Verify với toàn bộ known plaintext
+            decrypted = affine_decrypt(ciphertext, a, b)
+            if decrypted and known_plain in decrypted:
+                print(f"Found keys: a={a}, b={b}")
+                print(f"Decrypted: {decrypted.decode()}")
+                return decrypted.decode()
+        except:
+            continue
+    
+    return None
+
+ciphertext_hex = "c5142269dc717163f322697f639614223969638869dc69d76c962269477169a447f347dc559614dc3022d7637f69882b3088d763d72bd76347f3697f6396142239692b8822ce6963f3697f396c96d747c039dc96146ccf6951d769638869dc698863a496552269dcf3ce69dcf37f6322f3d769a422d71447ce6947716922f37f396c96d763f3c069dc69a4228888dcc022cf6951f369d7146388697f6396142239316922dc7f14695522d7d7223969477169d71422699655dc63f3d7221dd76963886971633988d769a4dc969622ce69d7476963d78869f32ba42239637fdc556922e52b637adc5522f3d7692b8863f3c069d714226996478863d76347f36963f369d7142269dc559614dc3022d769eb22cfc0cf3169ca897231691e89c13169cfcfcf3169a98915073fcf69c51422f33169d71422695522d7d722399c8869f32ba42239637fdc55697adc552b2269638869a42b55d76396556322ce69306c69dc697f47f388d7dcf3d7699cdc9c69dcf3ce69d71422f369dccece22ce69d74769dcf347d7142239697f47f388d7dcf3d7699c30cf9c69c51422693922882b55d769638869d7dc0622f369a447ce2b554769155669d747694730d7dc63f369d71422697f47393922889647f3ce63f3c0697f6396142239d7221dd7695522d7d72239cf69c51422697f47f388d7dcf3d788699cdc9c69dcf3ce699c309c69dc392269d714226906226c8869477169d71422697f639614223969dcf3ce69dc3922697fdc3922712b55556c697f14478822f369d7476922f3882b392269d714226922f37f396c96d76347f369dcf3ce69ce227f396c96d76347f3699639477f2288882288697fdcf3693022697f473939227fd7556c6939227a22398822cecf69c5142269dc717163f322697f6396142239699639477a63ce228869dc695563a463d722ce6955227a22556947716988227f2b3963d76c69dcf3ce697fdcf36930226922dc8863556c693039470622f3692b8863f3c069713922e52b22f37f6c69dcf3dc556c88638869637169d714226906226c69638869f347d769c9225555697f14478822f3cf690247c9227a22393169c963d71469dc96963947963963dcd7226906226c69882255227fd76347f3316963d7697fdcf3698822397a2269dc8869dc6930dc88637f69a422d71447ce6947716922f37f396c96d76347f36963f36922ce2b7fdcd76347f3dc556947396939227f3922dcd76347f3dc55698822d7d763f3c088cf69e147c9316914223922697f47a4228869d71422697155dcc08069bc020f64717fce5672ceb356717172643056717fce64dc56ceb37fa5c1f4720730c164c171f471b3f4dc71077171ce71b37130b33048dc30a57f7107dc7248dcb32271ad"
+decrypted = solve_affine_known_plaintext(ciphertext_hex)
+    

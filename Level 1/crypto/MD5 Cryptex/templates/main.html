@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cryptex</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <form class="container" action="/submit" method="post">
+      <div class="cryptex-box">
+        <p>{{ target }}</p>
+        <div class="dial-wrapper">
+          <div class="dial">
+            <button class="arrow-btn up-arrow" type="button">▲</button>
+            <div class="letter" id="dial1">A</div>
+            <button class="arrow-btn down-arrow" type="button">▼</button>
+            <input type="hidden" id="val1" name="val1" value="A" />
+          </div>
+          <div class="dial">
+            <button class="arrow-btn up-arrow" type="button">▲</button>
+            <div class="letter" id="dial2">A</div>
+            <button class="arrow-btn down-arrow" type="button">▼</button>
+            <input type="hidden" id="val2" name="val2" value="A" />
+          </div>
+          <div class="dial">
+            <button class="arrow-btn up-arrow" type="button">▲</button>
+            <div class="letter" id="dial3">A</div>
+            <button class="arrow-btn down-arrow" type="button">▼</button>
+            <input type="hidden" id="val3" name="val3" value="A" />
+          </div>
+          <div class="dial">
+            <button class="arrow-btn up-arrow" type="button">▲</button>
+            <div class="letter" id="dial4">A</div>
+            <button class="arrow-btn down-arrow" type="button">▼</button>
+            <input type="hidden" id="val4" name="val4" value="A" />
+          </div>
+          <div class="dial">
+            <button class="arrow-btn up-arrow" type="button">▲</button>
+            <div class="letter" id="dial5">A</div>
+            <button class="arrow-btn down-arrow" type="button">▼</button>
+            <input type="hidden" id="val5" name="val5" value="A" />
+          </div>
+          <div class="dial">
+            <button class="arrow-btn up-arrow" type="button">▲</button>
+            <div class="letter" id="dial6">A</div>
+            <button class="arrow-btn down-arrow" type="button">▼</button>
+            <input type="hidden" id="val6" name="val6" value="A" />
+          </div>
+        </div>
+        <p>{{ error }}</p>
+        <button class="submit-btn">Submit</button>
+      </div>
+    </form>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+  </body>
+</html>

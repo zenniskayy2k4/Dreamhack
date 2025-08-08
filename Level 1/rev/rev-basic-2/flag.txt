@@ -1,0 +1,4 @@
+DH{Comp4re_the_arr4y}
+.data:0000000140003000 aC
+
+Bài này có 1 mảng các kí tự, ta mở Ghidra dò tới địa DAT_140003000 là sẽ thấy nó
