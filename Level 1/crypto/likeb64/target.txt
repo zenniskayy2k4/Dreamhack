@@ -1,0 +1,5 @@
+IREHWYJZMEcGCODGMMbTENDDGcbGEMJZGEbGEZTFGYaGKNRTMIcGIMBSGRQTSNDDGAaWGYZRHEbGCNRQMUaDOMbEMRTGEYJYGUaWGOJQMYZHa===
+
+Bài này ta sẽ giải mã bằng base32 nhưng đổi lại cách giải mã sẽ như này trong ô Alphabet trên cyberchef.org: A-Za-z=
+
+Flag: DH{a9a8a8fc724c76b1916bfe64e63b8d024a94c05cc196a60e473ddfba855c90f2}
