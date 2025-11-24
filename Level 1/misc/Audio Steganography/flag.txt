@@ -1,0 +1,3 @@
+Dùng Spectrogram trong Audacity để nhìn thấy flag, chỉnh Hz tí cho dễ nhìn.
+
+Flag: DH{He11o_H1dden_Message}

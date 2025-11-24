@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>최고의 친구가 되어드립니다</title>
+    <style>
+      body {
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: linear-gradient(to bottom, #f9f9f9, #e3e3e3);
+        font-family: Arial, sans-serif;
+        box-sizing: border-box;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: column;
+        width: 400px;
+        height: 400px;
+        padding: 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        align-items: center;
+      }
+
+      h2 {
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      p {
+        color: #666;
+        font-size: 14px;
+        margin-bottom: 20px;
+      }
+
+      input {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        width: 93%;
+        height: 20px;
+        font-size: 14px;
+        outline: none;
+      }
+
+      button {
+        padding: 10px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.3s;
+        width: 100%;
+        margin-top: 20px;
+      }
+
+      button:hover {
+        background: #0056b3;
+      }
+
+      #response {
+        margin-top: 20px;
+        color: #333;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>✋ My best friend ✋</h2>
+      <p>저한테 인사 받으실래요?</p>
+      <div>
+        <input id="messageInput" placeholder="인삿말" />
+        <button onclick="sendMessage()">전송</button>
+      </div>
+      <div id="response"></div>
+    </div>
+
+    <script>
+      async function sendMessage() {
+        const input = document.getElementById("messageInput");
+        const responseDiv = document.getElementById("response");
+        const message = input.value.trim();
+
+        if (!message) {
+          responseDiv.innerText = "메시지를 입력해주세요";
+          responseDiv.style.color = "red";
+          return;
+        }
+
+        responseDiv.innerText = "전송 중...";
+        responseDiv.style.color = "#666";
+
+        const response = await fetch("/greet", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ msg: message }),
+        });
+
+        const res = await response.json();
+        responseDiv.innerText = `응답: ${res.result}`;
+        responseDiv.style.color = "#333";
+      }
+    </script>
+  </body>
+</html>

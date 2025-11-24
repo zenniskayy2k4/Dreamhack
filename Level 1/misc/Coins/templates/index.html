@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>100 Coins</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <div>
+        <h1 id="t-title">100 Coins</h1>
+        <div id="t-note" class="note">10개의 동전만 초록색 입니다.</div>
+      </div>
+      <div class="spacer"></div>
+
+      <div class="lang-wrap" aria-label="language switch">
+        <button id="lang-ko" class="lang-btn">한국어</button>
+        <button id="lang-en" class="lang-btn">English</button>
+      </div>
+
+      <button id="explainBtn" class="btn" style="background:#3f4a5e;" data-i18n="explain">게임 설명</button>
+      <button id="startBtn" class="btn" data-i18n="start">시작</button>
+      <button id="submitBtn" class="btn" disabled data-i18n="submit">제출</button>
+    </div>
+
+    <div id="status" class="status">
+      <span class="badge info" id="status-badge">INFO</span>
+      <span id="status-text">연속 성공: {{ streak }}/10</span>
+    </div>
+
+    <div class="left">
+      <h2 id="t-selected10">선택된 10개</h2>
+      <div id="stack" class="stack"></div>
+    </div>
+
+    <div class="board-wrap">
+      <div id="board" class="board"></div>
+    </div>
+  </div>
+
+  <div id="explainModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="t-explain-title" class="modal-title">게임 설명</h3>
+        <div class="spacer"></div>
+      </div>
+      <div class="modal-body" id="explainContent">
+      </div>
+      <div class="modal-actions">
+        <button id="explainClose" class="btn">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="langModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="t-choose-lang" class="modal-title">언어 선택</h3>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex; gap:10px; flex-wrap:wrap">
+          <button id="choose-ko" class="btn" style="background:#1f8c4a;">한국어</button>
+          <button id="choose-en" class="btn" style="background:#2b6cf6;">English</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="langLater" class="btn" style="background:#3f4a5e;">나중에</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const I18N = {
+      ko: {
+        title: "100 Coins",
+        note: "10개의 동전만 초록색 입니다.",
+        start: "시작",
+        submit: "제출",
+        explain: "게임 설명",
+        selected10: "선택된 10개",
+        explainTitle: "게임 설명",
+        chooseLang: "언어 선택",
+        later: "나중에",
+        ok: "확인",
+        statusInfo: (s) => `연속 성공: ${s}/10`,
+        statusSuccess: (l, r, s) => `성공! 왼쪽 초록=${l}, 오른쪽 초록=${r} → 연속 ${s}/10`,
+        statusFail: (l, r) => `실패… 왼쪽 초록=${l}, 오른쪽 초록=${r} → 연속 0/10`,
+        finished: "축하합니다! 10번 연속 성공!",
+        explainHtml: `
+          <p>보드판에는 100개의 동전이 있습니다. 동전의 앞면은 초록색, 뒷면은 빨간색입니다. 단, 100개의 동전 중 <strong>오직 10개만</strong>이 초록색(앞면)입니다.</p>
+          <p>게임이 시작되면 모든 동전이 회색으로 바뀌고 위치가 섞이며, 이 중 <strong>임의의 10개</strong>가 왼쪽으로 이동합니다. 당신은 이 10개 중 원하는 동전을 뒤집기(데이터만 전환)로 표시할 수 있습니다.</p>
+          <p>목표는 <strong>왼쪽 10개</strong>와 <strong>오른쪽 90개</strong>의 <strong>초록색 동전 개수</strong>가 같아지도록 만드는 것입니다. 제출하면 서버가 판정하고, 성공 시 연속 카운트가 올라갑니다. <strong>10번 연속 성공</strong>하면 보상을 확인할 수 있습니다.</p>
+        `
+      },
+      en: {
+        title: "100 Coins",
+        note: "Only top 10 coins are green.",
+        start: "Start",
+        submit: "Reveal",
+        explain: "How to Play",
+        selected10: "Picked 10",
+        explainTitle: "How to Play",
+        chooseLang: "Choose Language",
+        later: "Later",
+        ok: "OK",
+        statusInfo: (s) => `Streak: ${s}/10`,
+        statusSuccess: (l, r, s) => `Success! Left green=${l}, Right green=${r} → Streak ${s}/10`,
+        statusFail: (l, r) => `Fail… Left green=${l}, Right green=${r} → Streak 0/10`,
+        finished: "Congrats! 10 in a row!",
+        explainHtml: `
+          <p>There are 100 coins on the board. A coin's front is green and the back is red. Among the 100 coins, <strong>only 10</strong> are green (front).</p>
+          <p>When the game starts, all coins turn gray and shuffle; then <strong>10 random coins</strong> move to the left. You may mark any of these 10 coins to "flip" (this toggles their color data, still shown as gray until reveal).</p>
+          <p>Your goal is to make the number of <strong>green coins</strong> in the <strong>left 10</strong> equal to the number of green coins in the <strong>right 90</strong>. When you submit, the server judges. Success increases your streak; on <strong>10 consecutive successes</strong>, you'll see the reward.</p>
+        `
+      }
+    };
+    function getLang(){ return localStorage.getItem("lang") || "ko"; }
+    function setLang(l){
+      localStorage.setItem("lang", l);
+      applyI18n();
+      refreshLangButtons();
+    }
+    function applyI18n(){
+      const lang = getLang();
+      const t = I18N[lang];
+      document.documentElement.lang = lang; 
+      document.getElementById("t-title").textContent = t.title;
+      document.getElementById("t-note").textContent = t.note;
+      document.getElementById("startBtn").textContent = t.start;
+      document.getElementById("submitBtn").textContent = t.submit;
+      document.getElementById("explainBtn").textContent = t.explain;
+      document.getElementById("t-selected10").textContent = t.selected10;
+      document.getElementById("t-explain-title").textContent = t.explainTitle;
+      document.getElementById("t-choose-lang").textContent = t.chooseLang;
+      document.getElementById("langLater").textContent = t.later;
+      document.getElementById("explainClose").textContent = t.ok;
+      document.getElementById("explainContent").innerHTML = t.explainHtml;
+      setStatus("info", t.statusInfo(currentStreak));
+    }
+    function refreshLangButtons(){
+      const l = getLang();
+      document.getElementById("lang-ko").classList.toggle("active", l === "ko");
+      document.getElementById("lang-en").classList.toggle("active", l === "en");
+    }
+
+    const CELLS = 10;
+    const BOARD_SIZE = 500;
+    const GAP = 6;
+    const COIN = BOARD_SIZE / CELLS - GAP;
+    const SHUFFLE_MS = 900;
+    const MOVE_LEFT_MS = 700;
+
+    const board = document.getElementById("board");
+    const stack = document.getElementById("stack");
+    const startBtn = document.getElementById("startBtn");
+    const submitBtn = document.getElementById("submitBtn");
+    const explainBtn = document.getElementById("explainBtn");
+
+    const statusBadge = document.getElementById("status-badge");
+    const statusText  = document.getElementById("status-text");
+
+    const explainModal = document.getElementById("explainModal");
+    const explainClose = document.getElementById("explainClose");
+    const langModal = document.getElementById("langModal");
+    const chooseKo = document.getElementById("choose-ko");
+    const chooseEn = document.getElementById("choose-en");
+    const langLater = document.getElementById("langLater");
+    const langKoBtn = document.getElementById("lang-ko");
+    const langEnBtn = document.getElementById("lang-en");
+
+    const coins = [];
+    let phase = "idle"; 
+    let currentStreak = {{ streak|int }};
+    let roundToken = null;
+    let leftIDs = new Set();    
+    let toggledSet = new Set();
+
+    function setStatus(kind, text){
+      statusBadge.className = "badge " + (kind === "ok" ? "ok" : kind === "err" ? "err" : "info");
+      statusBadge.textContent = kind === "ok" ? "OK" : kind === "err" ? "FAIL" : "INFO";
+      statusText.textContent = text;
+    }
+
+    function gridToXY(idx) {
+      const r = Math.floor(idx / CELLS);
+      const c = idx % CELLS;
+      const x = c * (COIN + GAP) + GAP / 2;
+      const y = r * (COIN + GAP) + GAP / 2;
+      return { x, y };
+    }
+    function shuffleArray(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    function flipAnimate(element, toRect, duration) {
+      const fromRect = element.getBoundingClientRect();
+      const dx = fromRect.left - toRect.left;
+      const dy = fromRect.top  - toRect.top;
+      element.style.transition = "none";
+      element.style.transform = `translate(${dx}px, ${dy}px)`;
+      requestAnimationFrame(() => {
+        element.style.transition = `transform ${duration}ms cubic-bezier(.2,.7,.1,1)`;
+        element.style.transform = "translate(0,0)";
+      });
+    }
+
+    function createCoins() {
+      for (let i = 0; i < 100; i++) {
+        const coin = document.createElement("div");
+        const original = i < 10 ? "green" : "red";
+        coin.className = `coin ${original}`;
+        coin.dataset.index = i.toString();
+        const { x, y } = gridToXY(i);
+        coin.style.left = `${x}px`;
+        coin.style.top  = `${y}px`;
+        board.appendChild(coin);
+        coins.push(coin);
+      }
+    }
+
+    function setAllGrayVisual() {
+      coins.forEach(c => {
+        c.classList.remove("green", "red", "flipped");
+        if (!c.classList.contains("gray")) c.classList.add("gray");
+      });
+    }
+
+    function revealAllByServerRound() {
+      coins.forEach(c => {
+        const id = parseInt(c.dataset.index);
+        const flipped = leftIDs.has(id) && toggledSet.has(id);
+        const isGreen = ((id < 10) ^ flipped);
+        c.className = "coin " + (isGreen ? "green" : "red");
+      });
+    }
+
+    function shuffleOnBoard() {
+      const order = shuffleArray([...Array(100).keys()]);
+      coins.forEach((coin, newGridIdx) => {
+        const { x, y } = gridToXY(order[newGridIdx]);
+        coin.style.left = `${x}px`;
+        coin.style.top  = `${y}px`;
+        const toRect = {
+          left: board.getBoundingClientRect().left + x,
+          top:  board.getBoundingClientRect().top + y
+        };
+        flipAnimate(coin, toRect, SHUFFLE_MS);
+      });
+    }
+
+    function attachChoiceHandlers(picked) {
+      const toggle = (coin) => {
+        const id = parseInt(coin.dataset.index);
+        if (toggledSet.has(id)) { toggledSet.delete(id); coin.classList.remove("flipped"); }
+        else { toggledSet.add(id); coin.classList.add("flipped"); }
+      };
+      picked.forEach(c => {
+        c.classList.add("selectable");
+        c.tabIndex = 0;
+        c.addEventListener("click", c._onPickToggle = () => {
+          if (phase === "choosing") toggle(c);
+        });
+        c.addEventListener("keydown", c._onPickKey = (e) => {
+          if (phase === "choosing" && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            toggle(c);
+          }
+        });
+      });
+    }
+    function detachChoiceHandlers(picked) {
+      picked.forEach(c => {
+        c.classList.remove("selectable");
+        c.removeAttribute("tabindex");
+        if (c._onPickToggle) c.removeEventListener("click", c._onPickToggle);
+        if (c._onPickKey)    c.removeEventListener("keydown", c._onPickKey);
+        delete c._onPickToggle;
+        delete c._onPickKey;
+      });
+    }
+
+    function moveSpecificToLeftForChoosing(picked) {
+      const stackRect = stack.getBoundingClientRect();
+      picked.forEach((coin, idx) => {
+        coin.classList.remove("green", "red", "flipped");
+        if (!coin.classList.contains("gray")) coin.classList.add("gray");
+
+        const marginTop = 10;
+        const slotH = (COIN + GAP);
+        const targetTop = marginTop + idx * slotH;
+        const targetLeft = 12;
+
+        const before = coin.getBoundingClientRect();
+
+        coin.classList.add("selected");
+        coin.style.position = "absolute";
+        stack.appendChild(coin);
+        coin.style.left = `${targetLeft}px`;
+        coin.style.top  = `${targetTop}px`;
+
+        const after = {
+          left: stackRect.left + targetLeft,
+          top:  stackRect.top  + targetTop
+        };
+
+        coin.style.transition = "none";
+        const dx = before.left - after.left;
+        const dy = before.top  - after.top;
+        coin.style.transform = `translate(${dx}px, ${dy}px)`;
+        requestAnimationFrame(() => {
+          coin.style.transition = `transform ${MOVE_LEFT_MS}ms cubic-bezier(.2,.7,.1,1)`;
+          coin.style.transform = "translate(0,0)";
+        });
+      });
+
+      attachChoiceHandlers(picked);
+      return picked;
+    }
+
+    function resetLayoutToInitialGrid() {
+      toggledSet.clear();
+      coins.forEach(c => {
+        if (c.parentElement !== board) board.appendChild(c);
+        c.className = "coin"; 
+        const id = parseInt(c.dataset.index);
+        const { x, y } = gridToXY(id);
+        c.style.left = `${x}px`;
+        c.style.top  = `${y}px`;
+        c.classList.add(id < 10 ? "green" : "red");
+      });
+    }
+
+    async function startSequence() {
+      if (phase !== "idle") return;
+      phase = "shuffling";
+      startBtn.disabled = true;
+      submitBtn.disabled = true;
+
+      leftIDs = new Set();
+      toggledSet = new Set();
+      try {
+        const r = await fetch("/start", { method: "POST" });
+        const j = await r.json();
+        if (!j.ok) throw new Error("bad start");
+        roundToken = j.token;
+        leftIDs = new Set(j.left_ids);
+      } catch (e) {
+        setStatus("err", "server error");
+        phase = "idle";
+        startBtn.disabled = false;
+        return;
+      }
+
+      resetLayoutToInitialGrid();
+      setAllGrayVisual();
+      shuffleOnBoard();
+
+      setTimeout(() => {
+        const picked = coins.filter(c => leftIDs.has(parseInt(c.dataset.index)));
+        moveSpecificToLeftForChoosing(picked);
+        phase = "choosing";
+        submitBtn.disabled = false;
+
+        const onSubmit = async () => {
+          submitBtn.disabled = true;
+          detachChoiceHandlers(picked);
+
+          let j;
+          try {
+            const res = await fetch("/submit", {
+              method: "POST",
+              headers: {"Content-Type":"application/json"},
+              body: JSON.stringify({ round: roundToken, toggled: Array.from(toggledSet) })
+            });
+            j = await res.json();
+          } catch (e) {
+            setStatus("err", "network error");
+            phase = "idle";
+            startBtn.disabled = false;
+            submitBtn.removeEventListener("click", onSubmit);
+            return;
+          }
+
+          revealAllByServerRound();
+
+          const t = I18N[getLang()];
+          if (!j.ok) {
+            setStatus("err", "server error");
+          } else {
+            if (j.success) {
+              currentStreak = j.streak || 0;
+              setStatus("ok", t.statusSuccess(j.left_green, j.right_green, currentStreak));
+              if (j.finished && j.flag) {
+                setStatus("ok", `${t.finished}  →  ${j.flag}`);
+              }
+            } else {
+              currentStreak = 0;
+              setStatus("err", t.statusFail(j.left_green, j.right_green));
+            }
+          }
+
+          phase = "idle";
+          startBtn.disabled = false;
+          submitBtn.removeEventListener("click", onSubmit);
+        };
+
+        submitBtn.addEventListener("click", onSubmit);
+      }, SHUFFLE_MS + 100);
+    }
+
+    function openModal(el){ el.classList.add("show"); }
+    function closeModal(el){ el.classList.remove("show"); }
+
+    document.getElementById("explainBtn").addEventListener("click", () => {
+      document.getElementById("explainContent").innerHTML = I18N[getLang()].explainHtml;
+      document.getElementById("t-explain-title").textContent = I18N[getLang()].explainTitle;
+      document.getElementById("explainClose").textContent = I18N[getLang()].ok;
+      openModal(explainModal);
+    });
+    document.getElementById("explainClose").addEventListener("click", () => closeModal(explainModal));
+    explainModal.addEventListener("click", (e) => { if (e.target === explainModal) closeModal(explainModal); });
+
+    (function initLang(){
+      if (!localStorage.getItem("lang")) openModal(langModal);
+      applyI18n();
+      refreshLangButtons();
+    })();
+    chooseKo.addEventListener("click", () => { setLang("ko"); closeModal(langModal); });
+    chooseEn.addEventListener("click", () => { setLang("en"); closeModal(langModal); });
+    langLater.addEventListener("click", () => closeModal(langModal));
+
+    langKoBtn.addEventListener("click", () => setLang("ko"));
+    langEnBtn.addEventListener("click", () => setLang("en"));
+
+    createCoins();
+    const t0 = I18N[getLang()];
+    setStatus("info", t0.statusInfo(currentStreak));
+    startBtn.addEventListener("click", startSequence);
+  </script>
+</body>
+</html>

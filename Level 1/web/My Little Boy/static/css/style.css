@@ -1,0 +1,125 @@
+* { box-sizing: border-box; }
+:root {
+  --bg: #0f172a;  
+  --fg: #e2e8f0;  
+  --card: #111827; 
+  --muted: #94a3b8; 
+  --ok: #22c55e; 
+  --warn: #f59e0b; 
+  --bad: #ef4444; 
+  --accent: #38bdf8;
+}
+html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Apple SD Gothic Neo", "Malgun Gothic", Arial, sans-serif; }
+.container { max-width: 720px; margin: 24px auto; padding: 0 16px; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.header h1 { margin: 0; font-size: 28px; }
+.controls { display: flex; gap: 8px; flex-wrap: wrap; }
+button { background: var(--accent); color: #001018; border: none; padding: 10px 14px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+button.warn { background: var(--bad); color: #fff; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.card { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.0)), var(--card);
+        border-radius: 16px; padding: 18px; margin-top: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+.stats { display: grid; gap: 10px; }
+.stat { display: grid; grid-template-columns: 80px 1fr 64px; align-items: center; gap: 8px; }
+.stat.row { grid-template-columns: 80px auto auto; }
+.label { color: var(--muted); font-weight: 600; }
+.sublabel { margin-left: 12px; color: var(--muted); }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.bar { height: 14px; border-radius: 10px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.fill { height: 100%; width: 50%; background: var(--ok); transition: width 0.2s ease; }
+.footer { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-top: 16px; color: var(--muted); }
+
+.onboarding.hidden { display: none; }
+.onboarding {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: grid; place-items: center;
+  z-index: 50;
+}
+.onboarding-card {
+  width: min(460px, 92vw);
+  background: var(--card);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.onboarding-card h2 { margin: 0 0 8px; }
+.onboarding-card p { color: var(--muted); margin: 6px 0 12px; }
+.onboarding-card input {
+  width: 100%; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03); color: var(--fg);
+  margin-bottom: 10px;
+}
+.onboarding-card button { width: 100%; }
+.onboarding-hint { font-size: 12px; text-align: center; }
+
+.scene { padding: 12px; }
+.room {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background:
+    linear-gradient(#0b1221, #0b1221) padding-box,
+    repeating-linear-gradient(
+      45deg,
+      rgba(255,255,255,0.05) 0 12px,
+      rgba(255,255,255,0.0) 12px 24px
+    );
+  outline: 1px solid rgba(255,255,255,0.06);
+}
+
+.char {
+  position: absolute;
+  left: 8px; top: 8px;
+  width: clamp(56px, 8vw, 96px);
+  user-select: none;
+  -webkit-user-drag: none;
+  image-rendering: -webkit-optimize-contrast;
+  transform-origin: center;
+  transition: transform 0.2s linear, left var(--walk-dur, 1.2s) linear, top var(--walk-dur, 1.2s) linear;
+  filter: drop-shadow(0 6px 8px rgba(0,0,0,0.5));
+}
+.char.flip { transform: scaleX(-1); }
+
+@keyframes tama-bounce {
+  0%   { transform: translateY(0) scale(1) var(--flip, none); }
+  35%  { transform: translateY(-8px) scale(1.02) var(--flip, none); }
+  70%  { transform: translateY(0) scale(1) var(--flip, none); }
+  100% { transform: translateY(0) scale(1) var(--flip, none); }
+}
+.char.jump {
+  animation: tama-bounce 0.6s infinite ease-in-out;
+}
+
+/* Poop */
+.poop-layer { position: absolute; inset: 0; pointer-events: none; }
+.poop {
+  position: absolute;
+  font-size: clamp(20px, 2.8vw, 28px);
+  line-height: 1;
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,0.5));
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+.flag.hidden { display: none; }
+.flag {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  max-width: min(90vw, 720px);
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(17, 24, 39, 0.9); 
+  color: #e2e8f0; 
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: clamp(12px, 2.2vw, 16px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.45);
+  user-select: text;
+}

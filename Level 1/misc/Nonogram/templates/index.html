@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Nonogram</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="controls">
+      <label>Zoom:
+        <input id="zoom" type="range" min="5" max="28" step="1" value="16">
+      </label>
+      <button id="btn-fill" class="mode active" data-mode="fill">Fill(Left Click, F)</button>
+      <button id="btn-x" class="mode" data-mode="x">X(Right Click, X)</button>
+      <button id="btn-erase" class="mode" data-mode="erase">Erase(E)</button>
+      <button id="btn-reset">reset</button>
+      <button id="btn-check">check correct</button>
+    </div>
+  </header>
+
+  <div id="wrap">
+    <div id="corner"></div>
+    <div id="topCluesWrap"><canvas id="topClues"></canvas></div>
+    <div id="leftCluesWrap"><canvas id="leftClues"></canvas></div>
+    <div id="gridScroll">
+      <canvas id="grid"></canvas>
+    </div>
+  </div>
+
+  <details class="help">
+    <summary>Help</summary>
+    <ul>
+      <li>Left click, F: Fill blank with block / Right click, X: Fill blank with X  / E: Eraser mod</li>
+      <li>You can paint continuously by dragging.</li>
+    </ul>
+  </details>
+
+  <script>
+    const DATA = JSON.parse({{ data_json|tojson|safe }});
+    const HEIGHT = DATA.height, WIDTH = DATA.width;
+    const ROW_CLUES = DATA.row_clues, COL_CLUES = DATA.col_clues;
+
+    let cellSize = 16;
+    let mode = "fill"; 
+    let isMouseDown = false;
+    let paintValue = 1; 
+    let board = new Int8Array(HEIGHT * WIDTH);
+
+    const puzzleKey = "nonogram:" + hashJSON({ROW_CLUES, COL_CLUES, HEIGHT, WIDTH});
+
+    const grid = document.getElementById("grid");
+    const topClues = document.getElementById("topClues");
+    const leftClues = document.getElementById("leftClues");
+    const gridScroll = document.getElementById("gridScroll");
+
+    function resizeCanvas(canvas, w, h) {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return ctx;
+    }
+
+    function fontSizeForCell() {
+      return Math.max(8, Math.min(12, cellSize - 2));
+    }
+
+    function measureMargins() {
+      const tmp = document.createElement("canvas");
+      const ctx = tmp.getContext("2d");
+
+      const fRow = fontSizeForCell();
+      ctx.font = `${fRow}px Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+
+      let leftWidth = 0;
+      for (const row of ROW_CLUES) {
+        const label = row.length ? row.join(" ") : "0";
+        leftWidth = Math.max(leftWidth, ctx.measureText(label).width);
+      }
+      leftWidth = Math.ceil(leftWidth) + 16; 
+      leftWidth = Math.max(leftWidth, 80);
+
+      const fCol = fontSizeForCell();
+      const lineH = fCol + 2;
+      let topHeight = 0;
+      for (const col of COL_CLUES) {
+        topHeight = Math.max(topHeight, lineH * (col.length || 1) + 8);
+      }
+      topHeight = Math.max(topHeight, 40);
+
+      return { leftWidth, topHeight, fRow, fCol, lineH };
+    }
+
+    function layout() {
+      const { leftWidth, topHeight } = measureMargins();
+      document.getElementById("leftCluesWrap").style.width = leftWidth + "px";
+      document.getElementById("topCluesWrap").style.height = topHeight + "px";
+      document.getElementById("corner").style.width = leftWidth + "px";
+      document.getElementById("corner").style.height = topHeight + "px";
+
+      const gridW = WIDTH * cellSize;
+      const gridH = HEIGHT * cellSize;
+
+      resizeCanvas(topClues, gridW, topHeight);
+      resizeCanvas(leftClues, leftWidth, gridH);
+      resizeCanvas(grid, gridW, gridH);
+
+      drawAll();
+    }
+
+    function drawGrid() {
+      const ctx = grid.getContext("2d");
+      const W = grid.width / (window.devicePixelRatio || 1);
+      const H = grid.height / (window.devicePixelRatio || 1);
+
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, W, H);
+
+      for (let r = 0; r < HEIGHT; r++) {
+        for (let c = 0; c < WIDTH; c++) {
+          const v = board[r * WIDTH + c];
+          const x = c * cellSize, y = r * cellSize;
+          if (v === 1) {
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(x, y, cellSize, cellSize);
+          } else if (v === -1) {
+            ctx.strokeStyle = "#888";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x + 3, y + 3);
+            ctx.lineTo(x + cellSize - 3, y + cellSize - 3);
+            ctx.moveTo(x + cellSize - 3, y + 3);
+            ctx.lineTo(x + 3, y + cellSize - 3);
+            ctx.stroke();
+          }
+        }
+      }
+
+      ctx.strokeStyle = "#ddd";
+      ctx.lineWidth = 1;
+      for (let r = 0; r <= HEIGHT; r++) {
+        const y = r * cellSize + 0.5;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+      for (let c = 0; c <= WIDTH; c++) {
+        const x = c * cellSize + 0.5;
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      ctx.strokeStyle = "#999";
+      ctx.lineWidth = 1.6;
+      for (let r = 0; r <= HEIGHT; r += 5) {
+        const y = r * cellSize + 0.5;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+      for (let c = 0; c <= WIDTH; c += 5) {
+        const x = c * cellSize + 0.5;
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+    }
+
+    function drawLeftClues() {
+      const { fRow } = measureMargins(); 
+      const ctx = leftClues.getContext("2d");
+      const W = leftClues.width / (window.devicePixelRatio || 1);
+      const H = leftClues.height / (window.devicePixelRatio || 1);
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#f7f7f9";
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#333";
+      ctx.font = `${fRow}px Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+
+      for (let r = 0; r < HEIGHT; r++) {
+        const label = (ROW_CLUES[r].length ? ROW_CLUES[r].join(" ") : "0");
+        const y = r * cellSize + cellSize / 2;
+
+        if (compareRuns(getRunsFromRow(r), ROW_CLUES[r])) {
+          ctx.fillStyle = "#e9f7ec";
+          ctx.fillRect(0, r * cellSize, W, cellSize);
+          ctx.fillStyle = "#2b7a0b";
+        } else {
+          ctx.fillStyle = "#333";
+        }
+        ctx.fillText(label, W - 6, y);
+      }
+    }
+
+    function drawTopClues() {
+      const { fCol, lineH } = measureMargins();
+      const ctx = topClues.getContext("2d");
+      const W = topClues.width / (window.devicePixelRatio || 1);
+      const H = topClues.height / (window.devicePixelRatio || 1);
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#f7f7f9";
+      ctx.fillRect(0, 0, W, H);
+      ctx.font = `${fCol}px Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+
+      for (let c = 0; c < WIDTH; c++) {
+        const runs = COL_CLUES[c];
+        const x = c * cellSize + cellSize / 2;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(c * cellSize, 0, cellSize, H);
+        ctx.clip();
+
+        if (compareRuns(getRunsFromCol(c), runs)) {
+          ctx.fillStyle = "#e9f7ec";
+          ctx.fillRect(c * cellSize, 0, cellSize, H);
+          ctx.fillStyle = "#2b7a0b";
+        } else {
+          ctx.fillStyle = "#333";
+        }
+
+        if (runs.length === 0) {
+          ctx.fillText("0", x, H - 4);
+        } else {
+          let y = H - 4;
+          for (let i = runs.length - 1; i >= 0; i--) {
+            ctx.fillText(String(runs[i]), x, y);
+            y -= lineH;
+          }
+        }
+        ctx.restore();
+      }
+    }
+
+    function drawAll() {
+      drawGrid();
+      drawLeftClues();
+      drawTopClues();
+    }
+
+    function getRunsFromRow(r) {
+      const arr = [];
+      for (let c = 0; c < WIDTH; c++) arr.push(board[r * WIDTH + c] === 1 ? 1 : 0);
+      return runs(arr);
+    }
+    function getRunsFromCol(c) {
+      const arr = [];
+      for (let r = 0; r < HEIGHT; r++) arr.push(board[r * WIDTH + c] === 1 ? 1 : 0);
+      return runs(arr);
+    }
+    function runs(bits) {
+      const out = [];
+      let cur = 0;
+      for (const b of bits) {
+        if (b) cur++; else { if (cur) out.push(cur); cur = 0; }
+      }
+      if (cur) out.push(cur);
+      return out;
+    }
+    function compareRuns(a, b) {
+      if (a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+      return true;
+    }
+
+    grid.addEventListener("contextmenu", e => e.preventDefault());
+    grid.addEventListener("mousedown", (e) => {
+      isMouseDown = true;
+      const pos = mouseToCell(e);
+      if (!pos) return;
+      if (e.button === 2) mode = "x";
+      paintValue = (mode === "fill") ? 1 : (mode === "x" ? -1 : 0);
+      applyCell(pos.r, pos.c, paintValue, true);
+    });
+    window.addEventListener("mouseup", () => isMouseDown = false);
+    grid.addEventListener("mousemove", (e) => {
+      if (!isMouseDown) return;
+      const pos = mouseToCell(e);
+      if (!pos) return;
+      applyCell(pos.r, pos.c, paintValue, false);
+    });
+
+    function mouseToCell(e) {
+      const rect = grid.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const c = Math.floor(x / cellSize);
+      const r = Math.floor(y / cellSize);
+      if (r < 0 || r >= HEIGHT || c < 0 || c >= WIDTH) return null;
+      return { r, c };
+    }
+
+    function applyCell(r, c, val, toggle) {
+      const idx = r * WIDTH + c;
+      if (toggle) {
+        board[idx] = (board[idx] === val) ? 0 : val;
+      } else {
+        board[idx] = val;
+      }
+      drawAll();
+      saveLocal();
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key.toLowerCase() === "e") setMode("erase");
+      if (e.key.toLowerCase() === "f") setMode("fill");
+      if (e.key.toLowerCase() === "x") setMode("x");
+    });
+
+    document.getElementById("zoom").addEventListener("input", (e) => {
+      cellSize = parseInt(e.target.value, 10);
+      layout();
+      saveLocal();
+    });
+    for (const btn of document.querySelectorAll(".mode")) {
+      btn.addEventListener("click", () => setMode(btn.dataset.mode));
+    }
+    document.getElementById("btn-reset").addEventListener("click", () => {
+      board.fill(0);
+      drawAll();
+      saveLocal();
+    });
+    document.getElementById("btn-check").addEventListener("click", async () => {
+      const filled = [];
+      for (let r = 0; r < HEIGHT; r++) {
+        for (let c = 0; c < WIDTH; c++) {
+          if (board[r * WIDTH + c] === 1) filled.push([r, c]);
+        }
+      }
+      const res = await fetch("/check", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ filled })
+      }).then(r => r.json());
+      if (res.ok) {
+        alert("Correct!");
+      } else {
+        alert(`Incorrect.\n`);
+      }
+    });
+
+    function setMode(m) {
+      mode = m;
+      document.querySelectorAll(".mode").forEach(b => b.classList.toggle("active", b.dataset.mode === m));
+    }
+
+    function saveLocal() {
+      const obj = { cellSize, board: Array.from(board) };
+      try { localStorage.setItem(puzzleKey, JSON.stringify(obj)); } catch {}
+    }
+    function loadLocal() {
+      try {
+        const raw = localStorage.getItem(puzzleKey);
+        if (!raw) return;
+        const obj = JSON.parse(raw);
+        if (Array.isArray(obj.board) && obj.board.length === board.length) {
+          board.set(obj.board.map(x => parseInt(x,10) || 0));
+        }
+        if (obj.cellSize) cellSize = obj.cellSize;
+      } catch {}
+    }
+
+    function hashJSON(o) {
+      const s = JSON.stringify(o);
+      let h = 0;
+      for (let i = 0; i < s.length; i++) {
+        h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+      }
+      return (h >>> 0).toString(16);
+    }
+
+    loadLocal();
+    layout();
+
+    gridScroll.addEventListener("scroll", () => {
+      topClues.parentElement.scrollLeft = gridScroll.scrollLeft;
+      leftClues.parentElement.scrollTop = gridScroll.scrollTop;
+    });
+  </script>
+</body>
+</html>

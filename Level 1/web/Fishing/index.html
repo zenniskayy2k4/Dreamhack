@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>낚시 게임</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            margin-top: 50px;
+        }
+
+        #pokedex {
+            min-width: 250px;
+            margin-right: 40px;
+            border: 2px solid #bbb;
+            border-radius: 12px;
+            padding: 16px;
+            background: #f8f8f8;
+        }
+
+        #lake {
+            width: 600px;
+            margin-bottom: 20px;
+        }
+
+        #fish-img {
+            width: 200px;
+            margin: 20px 0;
+        }
+
+        #status {
+            margin: 20px;
+            font-size: 1.2em;
+        }
+
+        button {
+            font-size: 1.2em;
+            padding: 10px 20px;
+        }
+
+        .grade {
+            font-weight: bold;
+            margin-top: 12px;
+        }
+
+        .fish-cell {
+            display: flex;
+            align-items: center;
+            margin: 6px 0;
+        }
+
+        .fish-cell img {
+            width: 36px;
+            height: 36px;
+            margin-right: 10px;
+            border-radius: 6px;
+            border: 1px solid #aaa;
+        }
+
+        .unk {
+            color: #bbb;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="pokedex">
+        <h3>낚시 도감</h3>
+        <div id="dex-list"></div>
+    </div>
+
+    <div>
+        <img id="lake" src="{{ url_for('static', filename='호수.jpg') }}" alt="호수">
+        <div>
+            <button id="start-btn">낚시하기</button>
+            <button id="pull-btn" style="display:none;">낚싯대 당기기</button>
+        </div>
+        <div id="status"></div>
+        <img id="fish-img" style="display:none;" />
+    </div>
+
+    <div id="fish-modal" style="display:none; 
+        position:fixed; left:0;top:0;width:100vw;height:100vh;
+        background:rgba(0,0,0,0.5); z-index:1000; 
+        align-items:center; justify-content:center;">
+        <div id="fish-modal-content"
+            style="
+          background:white; padding:28px 36px 24px 36px; border-radius:18px; box-shadow:0 0 16px #0004;
+          display:flex; flex-direction:column; align-items:center; min-width:280px; min-height:240px; position:relative;">
+            <button id="fish-modal-close"
+                style="position:absolute;top:10px;right:14px;font-size:1.3em; background:none; border:none; cursor:pointer;">✖</button>
+            <img id="fish-modal-img" src="" alt=""
+                style="width:220px;max-width:70vw;max-height:40vh; margin-bottom:16px;" />
+            <div id="fish-modal-name" style="font-size:1.3em;font-weight:bold; margin-bottom:6px;"></div>
+            <div id="fish-modal-grade" style="font-size:1em; color:#666;"></div>
+        </div>
+    </div>
+
+    <script>
+        const fishes = {{ fishes| tojson | safe }};
+        let caught = {{ caught| tojson | safe }};
+
+        const grades = Array.from(new Set(fishes.map(f => f.grade)));
+        let fishesByGrade = {};
+        for (const g of grades) fishesByGrade[g] = [];
+        for (const f of fishes) fishesByGrade[f.grade].push(f);
+
+        const modal = document.getElementById('fish-modal');
+        const modalImg = document.getElementById('fish-modal-img');
+        const modalName = document.getElementById('fish-modal-name');
+        const modalGrade = document.getElementById('fish-modal-grade');
+        const modalClose = document.getElementById('fish-modal-close');
+
+        function showFishModal(fish) {
+            if (fish.name === "flag") {
+                modalImg.src = "/flag_image";
+            } else {
+                modalImg.src = "/static/" + encodeURIComponent(fish.img);
+            }
+            modalName.textContent = fish.name;
+            modalGrade.textContent = fish.grade;
+            modal.style.display = "flex";
+        }
+        function hideFishModal() {
+            modal.style.display = "none";
+        }
+        modalClose.onclick = hideFishModal;
+        modal.onclick = function (e) { if (e.target === modal) hideFishModal(); };
+
+        function renderDex() {
+            const dexList = document.getElementById('dex-list');
+            dexList.innerHTML = "";
+            for (const grade of grades) {
+                const gradeDiv = document.createElement('div');
+                gradeDiv.className = "grade";
+                gradeDiv.textContent = grade;
+                dexList.appendChild(gradeDiv);
+
+                for (const fish of fishesByGrade[grade]) {
+                    const fishDiv = document.createElement('div');
+                    fishDiv.className = "fish-cell";
+                    if (caught.includes(fish.name)) {
+                        const img = document.createElement('img');
+                        if (fish.name === "flag") {
+                            img.src = "/flag_image";
+                        } else {
+                            img.src = "/static/" + encodeURIComponent(fish.img);
+                        }
+                        img.alt = fish.name;
+                        fishDiv.appendChild(img);
+                        const span = document.createElement('span');
+                        span.textContent = fish.name;
+                        fishDiv.appendChild(span);
+
+                        fishDiv.style.cursor = "pointer";
+                        fishDiv.onclick = () => showFishModal(fish);
+                    } else {
+                        const img = document.createElement('img');
+                        img.src = "/static/unknown.jpg";
+                        img.alt = "???";
+                        fishDiv.appendChild(img);
+                        const span = document.createElement('span');
+                        span.className = "unk";
+                        span.textContent = "???";
+                        fishDiv.appendChild(span);
+                    }
+                    dexList.appendChild(fishDiv);
+                }
+            }
+        }
+
+        renderDex();
+
+        const startBtn = document.getElementById('start-btn');
+        const pullBtn = document.getElementById('pull-btn');
+        const statusDiv = document.getElementById('status');
+        const fishImg = document.getElementById('fish-img');
+
+        let biteTimeout = null;
+        let missTimeout = null;
+
+        function reset() {
+            startBtn.disabled = false;
+            pullBtn.style.display = "none";
+            pullBtn.disabled = false;
+            statusDiv.textContent = "";
+            fishImg.style.display = "none";
+            if (biteTimeout) clearTimeout(biteTimeout);
+            if (missTimeout) clearTimeout(missTimeout);
+        }
+
+        startBtn.onclick = () => {
+            reset();
+            startBtn.disabled = true;
+            statusDiv.textContent = "기다리는 중...";
+            let wait = Math.random() * 5 + 5;
+            biteTimeout = setTimeout(() => {
+                statusDiv.textContent = "입질이 왔습니다! 빨리 당기세요!";
+                pullBtn.style.display = "";
+                pullBtn.disabled = false;
+                missTimeout = setTimeout(() => {
+                    pullBtn.style.display = "none";
+                    statusDiv.textContent = "아쉽게도 물고기를 놓쳤습니다! 다시 시도하세요.";
+                    startBtn.disabled = false;
+                }, 3000);
+            }, wait * 1000);
+        };
+
+        pullBtn.onclick = () => {
+            if (missTimeout) clearTimeout(missTimeout);
+            pullBtn.disabled = true;
+            statusDiv.textContent = "낚싯대를 당기는 중...";
+            fetch("/fish", { method: "POST" })
+                .then(r => r.json())
+                .then(data => {
+                    statusDiv.textContent = `축하합니다! (${data.grade}) ${data.name}를 잡았습니다!`;
+                    if (data.name === "flag") {
+                        fishImg.src = "/flag_image";
+                    } else {
+                        fishImg.src = "/static/" + encodeURIComponent(data.img);
+                    }
+                    fishImg.style.display = "";
+                    startBtn.disabled = false;
+                    if (!caught.includes(data.name)) {
+                        caught.push(data.name);
+                        renderDex();
+                    }
+                });
+        };
+    </script>
+</body>
+
+</html>

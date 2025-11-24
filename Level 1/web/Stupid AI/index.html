@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Stupid AI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>Stupid AI</h1>
+
+    <div id="status" style="background:#111827;border:1px solid #1e293b;color:#94a3b8;padding:10px 12px;border-radius:10px;display:none"></div>
+
+    <form id="persona-form" class="persona">
+      <label>
+        Persona (optional, English):
+        <input id="persona" type="text" placeholder="e.g., Be friendly and concise." />
+      </label>
+      <button type="submit">Save persona</button>
+      <small class="hint">This adjusts the assistant's behavior.</small>
+    </form>
+
+    <section id="chat" class="chat"></section>
+
+    <form id="chat-form" class="composer">
+      <input id="msg" type="text" placeholder="Type your message (English)..." autocomplete="off" />
+      <button id="send" type="submit">Send</button>
+    </form>
+  </main>
+
+  <template id="tpl-user"><div class="bubble user"></div></template>
+  <template id="tpl-bot"><div class="bubble bot"></div></template>
+
+  <script>
+    const chat = document.getElementById("chat");
+    const tplUser = document.getElementById("tpl-user");
+    const tplBot  = document.getElementById("tpl-bot");
+    const form = document.getElementById("chat-form");
+    const input = document.getElementById("msg");
+    const sendBtn = document.getElementById("send");
+    const statusEl = document.getElementById("status");
+
+    const personaInput = document.getElementById("persona");
+    const personaForm  = document.getElementById("persona-form");
+    personaInput.value = localStorage.getItem("persona") || "";
+
+    const setDisabled = (on) => {
+      input.disabled = on;
+      sendBtn.disabled = on;
+      personaInput.disabled = on;
+    };
+
+    const setStatus = (msg, show=true) => {
+      statusEl.textContent = msg || "";
+      statusEl.style.display = show ? "block" : "none";
+    };
+
+    setDisabled(true);
+    setStatus("Loading the AI model… First boot may take a bit.");
+
+    async function pollStatus() {
+      try {
+        const r = await fetch("/status", {cache: "no-store"});
+        const j = await r.json();
+        if (j.ready) {
+          setStatus("Model ready.", true);
+          setTimeout(()=>setStatus("", false), 1200);
+          setDisabled(false);
+          return; 
+        } else {
+          if (j.error) setStatus("!!! " + j.error, true);
+        }
+      } catch(e) {
+        setStatus("Waiting for server…", true);
+      }
+      setTimeout(pollStatus, 1000);
+    }
+    pollStatus();
+
+    personaForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      localStorage.setItem("persona", personaInput.value.trim());
+      setStatus("Persona saved.", true);
+      setTimeout(()=>setStatus("", false), 1200);
+    });
+
+    function appendBubble(tpl, text) {
+      const node = tpl.content.firstElementChild.cloneNode(true);
+      node.textContent = text;
+      chat.appendChild(node);
+      chat.scrollTop = chat.scrollHeight;
+      return node;
+    }
+
+    async function sendWithSSE(message, persona, botNode) {
+      return new Promise((resolve) => {
+        const url = `/chat_sse?message=${encodeURIComponent(message)}&persona=${encodeURIComponent(persona)}`;
+        const es = new EventSource(url);
+        let needsSanitize = false;
+
+        es.onmessage = (ev) => {
+          try {
+            const data = JSON.parse(ev.data);
+            if (data.delta) {
+              botNode.textContent += data.delta;
+              chat.scrollTop = chat.scrollHeight;
+            }
+            if (data.postprocess === "sanitize") {
+              needsSanitize = true;
+            }
+            if (data.error) {
+              botNode.textContent = "[Error] " + data.error;
+              es.close(); resolve(false);
+            }
+            if (data.done) {
+              if (needsSanitize) {
+                botNode.textContent = botNode.textContent
+                  .replace(/<FLAG>.*?<\/FLAG>/gis, "[redacted]")
+                  .replace(/\bDH\{[^}]{0,200}\}/g, "[redacted]");
+              }
+              es.close(); resolve(true);
+            }
+          } catch {
+
+          }
+        };
+        es.onerror = () => { es.close(); resolve(false); };
+      });
+    }
+
+    async function sendWithFetch(message, persona, botNode) {
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ message, persona })
+        });
+        if (res.status === 503) {
+          botNode.textContent = "(Still loading the model… try again in a moment.)";
+          return;
+        }
+        const data = await res.json();
+        botNode.textContent = data.content || data.error || "(no response)";
+      } catch (err) {
+        botNode.textContent = "Error: " + (err?.message || err);
+      }
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const message = input.value.trim();
+      if (!message) return;
+      const persona = localStorage.getItem("persona") || "";
+
+      appendBubble(tplUser, message);
+      input.value = "";
+      const botNode = appendBubble(tplBot, "");
+
+      const ok = await sendWithSSE(message, persona, botNode);
+      if (!ok) {
+        await sendWithFetch(message, persona, botNode);
+      }
+    });
+  </script>
+</body>
+</html>

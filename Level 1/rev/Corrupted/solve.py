@@ -1,0 +1,16 @@
+# Các byte được hardcode trong chương trình (mảng local_b8)
+encrypted_data = [
+    0x57, 0x5b, 0x8e, 0x5b, 0x47, 0x74, 0x77, 0x46,
+    0x85, 0x86, 0x56, 0x43, 0x85, 0x85, 0x88, 0x83,
+    0x87, 0x44, 0x82, 0x81, 0x90
+]
+
+flag = ""
+
+for byte_val in encrypted_data:
+    # Áp dụng phép toán ngược: char = encrypted_char - 0x13
+    decrypted_char_code = byte_val - 0x13
+    
+    flag += chr(decrypted_char_code)
+
+print(f"Flag: {flag}")

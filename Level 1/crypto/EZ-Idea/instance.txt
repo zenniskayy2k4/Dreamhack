@@ -1,0 +1,46 @@
+MODE=ECB
+PAD=PKCS7
+BLKSIZE=8
+NZ=2
+BITS_PER_WORD=10
+POS_DOMAIN=0,3,5 		
+PROBE0_P=0000000000000000
+PROBE0_C=7152ce44833d8ee5
+PROBE1_P=ffffffffffffffff
+PROBE1_C=8673b0a984118485
+C_FLAG=1c6a44a842c260351944507acdf606a82e5539c7c6c7dfdb872d81b18b13ee213175c78f019d21c3a0ccb7a71293a255c45466345d33dcca3b8a405f083bd854e8024eadce69bf2a273f4ae96124e6183e8c402b7b6529590d6560e1c667915ef49e76e424472b615aca49bd9384fc54c594789bc6f8f2b6d6ab17b04fa6b4219ba401c18e80fbe24654170db3f339bd219428f9aed8a9d33666c268a35aca34a88df8644f2e33dc94ae44ed743da3d2aac3de01e8a6975c617b1ffd9b2a442950e47894b3e69c90426cb0ff2c2e641c
+
+
+------------------------------------ Meaning of each piece of information ------------------------------------
+MODE=ECB
+Encrypt each block independently
+
+PAD=PKCS7
+Padding in PKCS#7 format
+
+BLKSIZE=8
+IDEA block size: 8 bytes
+
+NZ=2
+When a 128-bit IDEA key is divided into eight 16-bit words, only two of them are non-zero.
+
+BITS_PER_WORD=10
+When dividing a 128-bit IDEA key into eight 16-bit words, the NZ non-zero words can only have a 10-bit range of values.
+
+POS_DOMAIN=0,3,5
+When a 128-bit IDEA key is divided into eight 16-bit words, the only candidate positions where non-zero values can be obtained are words 0, 3, and 5.
+
+PROBE0_P
+0x0000000000000000
+
+PROBE0_C
+The result of encrypting the block with IDEA-ECB using the key
+
+PROBE1_P
+0xffffffffffffffff
+
+PROBE1_C
+The result of encrypting the block with IDEA-ECB using the key
+
+C_FLAG
+The result of IDEA-ECB encryption with the entire flag as the key

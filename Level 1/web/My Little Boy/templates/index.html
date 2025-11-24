@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tamagotchi — Flask</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div id="onboarding" class="onboarding hidden">
+    <div class="onboarding-card">
+      <p>이름을 지어주세요.</p>
+      <input id="init-name" type="text" maxlength="16" placeholder="예: 거북이" />
+      <button id="init-confirm">시작하기</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <header class="header">
+      <h1><span id="pet-name"></span></h1>
+      <div class="controls">
+        <button id="feed">먹이주기</button>
+        <button id="play">놀아주기</button>
+        <button id="clean">씻기기</button>
+
+        <button id="scoop" class="warn" style="display:none">치우기</button>
+        <button id="pet" style="display:none">쓰다듬기</button>
+
+        <button id="reset" class="warn">리셋</button>
+      </div>
+    </header>
+
+    <section class="scene card">
+      <div id="room" class="room">
+        <div id="poop-layer" class="poop-layer"></div>
+        <img id="char" class="char" src="{{ url_for('static', filename='img/char.png') }}" alt="character" />
+      </div>
+    </section>
+
+    <main class="card">
+      <div class="stats">
+        <div class="stat">
+          <span class="label">배고픔</span>
+          <div class="bar"><div class="fill" id="bar-hunger"></div></div>
+          <span id="num-hunger" class="num">0</span>
+        </div>
+        <div class="stat">
+          <span class="label">행복</span>
+          <div class="bar"><div class="fill" id="bar-happiness"></div></div>
+          <span id="num-happiness" class="num">0</span>
+        </div>
+        <div class="stat">
+          <span class="label">위생</span>
+          <div class="bar"><div class="fill" id="bar-hygiene"></div></div>
+          <span id="num-hygiene" class="num">0</span>
+        </div>
+        <div class="stat row">
+          <span class="label">나이</span>
+          <span id="num-age" class="num">0</span>
+          <span class="sublabel" id="alive-label">살아있음</span>
+        </div>
+      </div>
+
+      <p id="status-text" class="hint">상태를 불러오는 중…</p>
+    </main>
+
+    <footer class="footer">
+      <span>Tick: <code id="tick-interval">?</code>s</span>
+      <span>API 상태: <code id="api-status">…</code></span>
+    </footer>
+  </div>
+
+  <div id="flag-box" class="flag hidden" aria-live="polite"></div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

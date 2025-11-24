@@ -1,0 +1,4 @@
+Bài này dùng whitespace nha nên là check kĩ trong file flag.txt
+
+Sau đó dùng SNOW whitespace để giải
+Mở cmd chạy lệnh: SNOW.EXE -C flag.txt

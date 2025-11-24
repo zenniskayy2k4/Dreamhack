@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+import sys
+import os
+
+def is_safe(cmd):
+    cmd = cmd.lower()
+    banned = {
+        # Shell
+        'grp','script','login','su','linux',
+        # Io
+        'find','od','cat','head','tail','less','fmt','more','grep','pr','nl','strings','awk','cut','dd',
+        'sh','echo','py','eval','print','args','perl','dump','sed','base','db','rev','tac','expand','paste',
+        'sort','uniq','fold','iconv','pager','man','tee'
+        # Comparsion
+        'diff','cmp','comm','join',
+        # System
+        'dev','proc',
+        # Compression
+        'tar','zip'
+    }
+    symbols = set("$#<>!@%^&*()[]{}`~;:'\"\\|/?=,+*")
+    return all(w not in cmd for w in banned) and all(c not in cmd for c in symbols)
+
+def is_executable(path: str) -> bool:
+    return os.path.isfile(path) and os.access(path, os.X_OK)
+
+def help():
+    seen = set()
+    for directory in os.environ.get('PATH','').split(os.pathsep):
+        if not os.path.isdir(directory):
+            continue
+        try:
+            for fname in os.listdir(directory):
+                if fname in seen:
+                    continue
+                seen.add(fname)
+                full = os.path.join(directory, fname)
+                if is_executable(full) and is_safe(fname):
+                    print(fname, end=' ')
+        except PermissionError:
+            continue
+    print()
+
+def main():
+    sys.stdout.flush()
+    while True:
+        sys.stdout.write("$ ")
+        sys.stdout.flush()
+        line = sys.stdin.readline()
+        if not line:
+            break
+        cmd = line.strip()
+        if cmd.lower() == "exit":
+            sys.stdout.write("bye\n")
+            break
+        elif cmd.lower() == "help":
+            help()
+        elif is_safe(cmd):
+            os.system(cmd)
+        else:
+            sys.stdout.write("nah.\n")
+        sys.stdout.flush()
+
+if __name__ == "__main__":
+    main()
